@@ -14,7 +14,7 @@ pub trait StateMachine<S, E, A> {
   fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self
   where
     Self: Sized;
-  fn update_state(&self, event: E);
+  fn update_state(&mut self, event: E);
   fn current_state(&self) -> &StateResult<S, A>;
 }
 
@@ -33,13 +33,19 @@ struct MyStateMachine<S, E, A> {
 
 impl<S, E, A> StateMachine<S, E, A> for MyStateMachine<S, E, A>
 where
-  S: Default,
+  S: Default + PartialEq + Eq + Clone,
+  E: PartialEq + Eq + Clone,
+  A: Clone,
 {
   fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self {
     MyStateMachine { state: StateResult { state: S::default(), actions: Vec::new() }, transitions, states, events }
   }
 
-  fn update_state(&self, event: E) {}
+  fn update_state(&mut self, event: E) {
+    let ei = self.events.iter().position(|e| e == &event);
+    let si = self.states.iter().position(|s| s == &self.state.state);
+    self.state = self.transitions[si.unwrap()][ei.unwrap()].clone();
+  }
 
   fn current_state(&self) -> &StateResult<S, A> {
     &self.state
@@ -52,7 +58,7 @@ mod tests {
   use strum::IntoEnumIterator;
   use strum_macros::EnumIter;
 
-  #[derive(Debug, EnumIter, Default, PartialEq, Eq)]
+  #[derive(Debug, EnumIter, Default, PartialEq, Eq, Clone)]
   enum State {
     #[default]
     Empty,
@@ -60,13 +66,13 @@ mod tests {
     Payed,
   }
 
-  #[derive(Debug, EnumIter)]
+  #[derive(Debug, EnumIter, Clone)]
   enum Action {
     AddItem,
     DeleteItem,
     Pay,
   }
-  #[derive(Debug, EnumIter)]
+  #[derive(Debug, EnumIter, PartialEq, Eq, Clone)]
   enum Event {
     ItemAdded,
     ItemDeleted,
@@ -74,12 +80,54 @@ mod tests {
   }
 
   #[test]
-  fn test_machine() {
+  fn test_machine1() {
     let fsm = MyStateMachine::new(
       State::iter().collect(),
       Event::iter().collect(),
-      vec![vec![StateResult { state: State::InProgress, actions: vec![Action::AddItem] }]],
+      vec![
+        vec![
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+        ],
+        vec![
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+        ],
+        vec![
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+        ],
+      ],
     );
     assert_eq!(fsm.current_state().state, State::Empty)
+  }
+  #[test]
+  fn test_machine2() {
+    let mut fsm = MyStateMachine::new(
+      State::iter().collect(),
+      Event::iter().collect(),
+      vec![
+        vec![
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+        ],
+        vec![
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+        ],
+        vec![
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
+        ],
+      ],
+    );
+    fsm.update_state(Event::ItemAdded);
+    assert_eq!(fsm.current_state().state, State::InProgress)
   }
 }
