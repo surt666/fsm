@@ -1,133 +1,124 @@
-/*
-events/state        | InProgress | Payed    | Sent                     | Delivered | PayDiff | DeliveryFailed | Failed |
-ItemAdded           | InProgress | PayDiff  | Failed                   | Failed     | PayDiff  | Failed       | Failed |
-ItemDeleted         | InProgress | PayDiff  | Failed                   | Failed     | PayDiff  | Failed       | Failed |
-OrderPayed          | Payed      | Failed   | Failed                   | Failed     | Payed    | Failed       | Failed |
-OrderDetailsAdded   | InProgress | Failed   | Failed                   | Failed     | Failed   | Failed       | Failed |
-OrderSent           | Failed     | Sent     | Failed                   | Failed     | Failed   | Failed       | Failed |
-OrderDelivered      | Failed     | Failed   | Delivered                | Failed     | Failed   | Failed       | Failed |
-OrderDeliveryFailed | Failed     | Failed   | DeliveryFailed [ReSend]  | Failed     | Failed   | Failed       | Failed |
-CustomerAdded       | InProgress | Failed   | Failed                   | Failed     | Failed   | Failed       | Failed |
-*/
+#![feature(lazy_cell)]
 
-pub trait StateMachine<S, E, A> {
-  fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self
-  where
-    Self: Sized;
-  fn update_state(&mut self, event: E);
-  fn current_state(&self) -> &StateResult<S, A>;
+pub trait TStateMachine<S, E, A> {
+    fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self
+    where
+        Self: Sized;
+    fn update_state(&mut self, event: E);
+    fn current_state(&self) -> &StateResult<S, A>;
 }
 
 #[derive(Clone)]
 struct StateResult<S, A> {
-  state: S,
-  actions: Vec<A>,
+    state: S,
+    actions: Vec<A>,
 }
 #[derive(Clone)]
-struct MyStateMachine<S, E, A> {
-  state: StateResult<S, A>,
-  transitions: Vec<Vec<StateResult<S, A>>>,
-  states: Vec<S>,
-  events: Vec<E>,
+struct StateMachine<S, E, A> {
+    state: StateResult<S, A>,
+    transitions: Vec<Vec<StateResult<S, A>>>,
+    states: Vec<S>,
+    events: Vec<E>,
 }
 
-impl<S, E, A> StateMachine<S, E, A> for MyStateMachine<S, E, A>
+impl<S, E, A> TStateMachine<S, E, A> for StateMachine<S, E, A>
 where
-  S: Default + PartialEq + Eq + Clone,
-  E: PartialEq + Eq + Clone,
-  A: Clone,
+    S: Default + PartialEq + Eq + Clone,
+    E: PartialEq + Eq + Clone,
+    A: Clone,
 {
-  fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self {
-    MyStateMachine { state: StateResult { state: S::default(), actions: Vec::new() }, transitions, states, events }
-  }
+    fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self {
+        StateMachine { state: StateResult { state: S::default(), actions: Vec::new() }, transitions, states, events }
+    }
 
-  fn update_state(&mut self, event: E) {
-    let ei = self.events.iter().position(|e| e == &event);
-    let si = self.states.iter().position(|s| s == &self.state.state);
-    self.state = self.transitions[si.unwrap()][ei.unwrap()].clone();
-  }
+    fn update_state(&mut self, event: E) {
+        let ei = self.events.iter().position(|e| e == &event);
+        let si = self.states.iter().position(|s| s == &self.state.state);
+        println!("EI {} SI {}", ei.unwrap(), si.unwrap());
+        self.state = self.transitions[ei.unwrap()][si.unwrap()].clone();
+    }
 
-  fn current_state(&self) -> &StateResult<S, A> {
-    &self.state
-  }
+    fn current_state(&self) -> &StateResult<S, A> {
+        &self.state
+    }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use strum::IntoEnumIterator;
-  use strum_macros::EnumIter;
+    use super::*;
+    use std::sync::LazyLock;
+    use strum::IntoEnumIterator;
+    use strum_macros::EnumIter;
 
-  #[derive(Debug, EnumIter, Default, PartialEq, Eq, Clone)]
-  enum State {
-    #[default]
-    Empty,
-    InProgress,
-    Payed,
-  }
+    #[derive(Debug, EnumIter, Default, PartialEq, Eq, Clone)]
+    enum State {
+        #[default]
+        Empty,
+        InProgress,
+        Payed,
+        PayDiff,
+        Failed,
+    }
 
-  #[derive(Debug, EnumIter, Clone)]
-  enum Action {
-    AddItem,
-    DeleteItem,
-    Pay,
-  }
-  #[derive(Debug, EnumIter, PartialEq, Eq, Clone)]
-  enum Event {
-    ItemAdded,
-    ItemDeleted,
-    Payed,
-  }
+    #[derive(Debug, EnumIter, Clone)]
+    enum Action {
+        AddItem,
+        DeleteItem,
+        Pay,
+        RefundDiff,
+    }
+    #[derive(Debug, EnumIter, PartialEq, Eq, Clone)]
+    enum Event {
+        ItemAdded,
+        ItemDeleted,
+        OrderPayed,
+    }
 
-  #[test]
-  fn test_machine1() {
-    let fsm = MyStateMachine::new(
-      State::iter().collect(),
-      Event::iter().collect(),
-      vec![
+    /*
+    events/state        | Empty      | InProgress | Payed                    | Sent                     | Delivered | PayDiff | DeliveryFailed | Failed |
+    ItemAdded           | InProgress | InProgress | PayDiff                  | Failed                   | Failed     | PayDiff  | Failed       | Failed |
+    ItemDeleted         | Failed     | InProgress | Payed [Refund]           | Failed                   | Failed     | PayDiff  | Failed       | Failed |
+    OrderPayed          | Failed     | Payed      | Failed                   | Failed                   | Failed     | Payed    | Failed       | Failed |
+    OrderDetailsAdded   | InProgress | Failed     | Failed                   | Failed     | Failed   | Failed       | Failed |
+    OrderSent           | Failed     | Sent       | Failed                   | Failed     | Failed   | Failed       | Failed |
+    OrderDelivered      | Failed     | Failed     | Delivered                | Failed     | Failed   | Failed       | Failed |
+    OrderDeliveryFailed | Failed     | Failed     | DeliveryFailed [ReSend]  | Failed     | Failed   | Failed       | Failed |
+    CustomerAdded       | InProgress | Failed     | Failed                   | Failed     | Failed   | Failed       | Failed |
+    */
+    static TRANSITIONS: LazyLock<Vec<Vec<StateResult<State, Action>>>> = LazyLock::new(|| {
         vec![
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-        ],
-        vec![
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-        ],
-        vec![
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-        ],
-      ],
-    );
-    assert_eq!(fsm.current_state().state, State::Empty)
-  }
-  #[test]
-  fn test_machine2() {
-    let mut fsm = MyStateMachine::new(
-      State::iter().collect(),
-      Event::iter().collect(),
-      vec![
-        vec![
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-        ],
-        vec![
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-        ],
-        vec![
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-          StateResult { state: State::InProgress, actions: vec![Action::AddItem] },
-        ],
-      ],
-    );
-    fsm.update_state(Event::ItemAdded);
-    assert_eq!(fsm.current_state().state, State::InProgress)
-  }
+            vec![
+                /* ItemAdded */
+                StateResult { state: State::InProgress, actions: vec![Action::AddItem, Action::DeleteItem] }, //Empty
+                StateResult { state: State::InProgress, actions: vec![Action::AddItem, Action::DeleteItem] }, //InProgress
+                StateResult { state: State::PayDiff, actions: vec![Action::Pay] },                            //Payed
+            ],
+            vec![
+                /* ItemDeleted */
+                StateResult { state: State::Failed, actions: vec![Action::AddItem, Action::DeleteItem] }, //Empty
+                StateResult { state: State::InProgress, actions: vec![] },                                //InProgress
+                StateResult { state: State::Payed, actions: vec![Action::RefundDiff] },                   //Payed
+            ],
+            vec![
+                /* OrderPayed */
+                StateResult { state: State::Failed, actions: vec![] }, //Empty
+                StateResult { state: State::Payed, actions: vec![] },  //InProgress
+                StateResult { state: State::Failed, actions: vec![] }, //Payed
+            ],
+        ]
+    });
+    #[test]
+    fn test_machine1() {
+        let fsm = StateMachine::new(State::iter().collect(), Event::iter().collect(), TRANSITIONS.to_owned());
+        assert_eq!(fsm.current_state().state, State::Empty)
+    }
+    #[test]
+    fn test_machine2() {
+        let mut fsm = StateMachine::new(State::iter().collect(), Event::iter().collect(), TRANSITIONS.to_owned());
+        fsm.update_state(Event::ItemAdded);
+        fsm.update_state(Event::ItemAdded);
+        fsm.update_state(Event::OrderPayed);
+        assert_eq!(fsm.current_state().state, State::Payed);
+        assert!(fsm.current_state().actions.is_empty())
+    }
 }
