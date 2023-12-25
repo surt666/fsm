@@ -9,12 +9,12 @@ pub trait TStateMachine<S, E, A> {
 }
 
 #[derive(Clone)]
-struct StateResult<S, A> {
+pub struct StateResult<S, A> {
     state: S,
     actions: Vec<A>,
 }
 #[derive(Clone)]
-struct StateMachine<S, E, A> {
+pub struct StateMachine<S, E, A> {
     state: StateResult<S, A>,
     transitions: Vec<Vec<StateResult<S, A>>>,
     states: Vec<S>,
