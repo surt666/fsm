@@ -11,8 +11,10 @@ pub trait TStateMachine<S, E, A> {
 #[derive(Clone)]
 pub struct StateResult<S, A> {
     state: S,
+    #[allow(dead_code)]
     actions: Vec<A>,
 }
+
 #[derive(Clone)]
 pub struct StateMachine<S, E, A> {
     state: StateResult<S, A>,
