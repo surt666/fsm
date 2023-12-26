@@ -34,7 +34,7 @@ where
     }
 
     fn update_state(&mut self, event: E) {
-        println!("UPDATING")
+        println!("UPDATING");
         let ei = self.events.iter().position(|e| e == &event);
         let si = self.states.iter().position(|s| s == &self.state.state);
         if let (Some(si), Some(ei)) = (si, ei) {
