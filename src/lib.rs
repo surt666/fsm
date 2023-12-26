@@ -36,8 +36,10 @@ where
     fn update_state(&mut self, event: E) {
         let ei = self.events.iter().position(|e| e == &event);
         let si = self.states.iter().position(|s| s == &self.state.state);
-        println!("EI {} SI {}", ei.unwrap(), si.unwrap());
-        self.state = self.transitions[ei.unwrap()][si.unwrap()].clone();
+        if let (Some(si), Some(ei)) = (si, ei) {
+            println!("EI {} SI {}", ei, si);
+            self.state = self.transitions[ei][si].clone();
+        }
     }
 
     fn current_state(&self) -> &StateResult<S, A> {
