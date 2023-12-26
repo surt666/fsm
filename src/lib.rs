@@ -1,7 +1,5 @@
 #![feature(lazy_cell)]
 
-use std::fmt::Display;
-
 pub trait TStateMachine<S, E, A> {
     fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self
     where
@@ -28,7 +26,7 @@ pub struct StateMachine<S, E, A> {
 impl<S, E, A> TStateMachine<S, E, A> for StateMachine<S, E, A>
 where
     S: Default + PartialEq + Eq + Clone,
-    E: PartialEq + Eq + Clone + Display,
+    E: PartialEq + Eq + Clone,
     A: Clone,
 {
     fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self {
@@ -37,10 +35,7 @@ where
 
     fn update_state(&mut self, event: E) {
         println!("UPDATING");
-        let ei = self.events.iter().position(|e| {
-            println!("E {} EE {}", e, event);
-            e == &event
-        });
+        let ei = self.events.iter().position(|e| e == &event);
         let si = self.states.iter().position(|s| s == &self.state.state);
         println!("EI {:#?} SI {:#?}", ei, si);
         if let (Some(si), Some(ei)) = (si, ei) {
