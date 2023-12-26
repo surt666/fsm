@@ -39,7 +39,7 @@ where
         let si = self.states.iter().position(|s| s == &self.state.state);
         println!("EI {:#?} SI {:#?}", ei, si);
         if let (Some(si), Some(ei)) = (si, ei) {
-            println!("EI {} SI {}", ei, si);
+            println!("EI2 {} SI2 {}", ei, si);
             self.state = self.transitions[ei][si].clone();
         }
     }
