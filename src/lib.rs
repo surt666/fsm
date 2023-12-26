@@ -80,17 +80,6 @@ mod tests {
         OrderPayed,
     }
 
-    /*
-    events/state        | Empty      | InProgress | Payed                    | Sent                     | Delivered | PayDiff | DeliveryFailed | Failed |
-    ItemAdded           | InProgress | InProgress | PayDiff                  | Failed                   | Failed     | PayDiff  | Failed       | Failed |
-    ItemDeleted         | Failed     | InProgress | Payed [Refund]           | Failed                   | Failed     | PayDiff  | Failed       | Failed |
-    OrderPayed          | Failed     | Payed      | Failed                   | Failed                   | Failed     | Payed    | Failed       | Failed |
-    OrderDetailsAdded   | InProgress | Failed     | Failed                   | Failed     | Failed   | Failed       | Failed |
-    OrderSent           | Failed     | Sent       | Failed                   | Failed     | Failed   | Failed       | Failed |
-    OrderDelivered      | Failed     | Failed     | Delivered                | Failed     | Failed   | Failed       | Failed |
-    OrderDeliveryFailed | Failed     | Failed     | DeliveryFailed [ReSend]  | Failed     | Failed   | Failed       | Failed |
-    CustomerAdded       | InProgress | Failed     | Failed                   | Failed     | Failed   | Failed       | Failed |
-    */
     static TRANSITIONS: LazyLock<Vec<Vec<StateResult<State, Action>>>> = LazyLock::new(|| {
         vec![
             vec![
