@@ -1,9 +1,15 @@
 #![feature(lazy_cell)]
 
+use std::collections::HashMap;
+use std::hash::Hash;
+
 pub trait TStateMachine<S, E, A> {
-    fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self
+    fn new(states: Vec<S>, events: Vec<E>, transitions: HashMap<(E, S), StateResult<S, A>>) -> Self
     where
         Self: Sized;
+    // fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self
+    // where
+    //     Self: Sized;
     fn update_state(&mut self, event: E);
     fn current_state(&self) -> &StateResult<S, A>;
 }
@@ -18,31 +24,41 @@ pub struct StateResult<S, A> {
 #[derive(Clone)]
 pub struct StateMachine<S, E, A> {
     state: StateResult<S, A>,
-    transitions: Vec<Vec<StateResult<S, A>>>,
+    transitions: HashMap<(E, S), StateResult<S, A>>, //Vec<Vec<StateResult<S, A>>>,
     states: Vec<S>,
     events: Vec<E>,
 }
 
 impl<S, E, A> TStateMachine<S, E, A> for StateMachine<S, E, A>
 where
-    S: Default + PartialEq + Eq + Clone,
-    E: PartialEq + Eq + Clone,
-    A: Clone,
+    S: Default + PartialEq + Eq + Clone + Hash,
+    E: PartialEq + Eq + Clone + Hash,
+    A: Clone + Default,
 {
-    fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self {
+    fn new(states: Vec<S>, events: Vec<E>, transitions: HashMap<(E, S), StateResult<S, A>>) -> Self {
         StateMachine { state: StateResult { state: S::default(), actions: Vec::new() }, transitions, states, events }
     }
 
     fn update_state(&mut self, event: E) {
         println!("UPDATING");
-        let ei = self.events.iter().position(|e| e == &event);
-        let si = self.states.iter().position(|s| s == &self.state.state);
-        println!("EI {:#?} SI {:#?}", ei, si);
-        if let (Some(si), Some(ei)) = (si, ei) {
-            println!("EI2 {} SI2 {}", ei, si);
-            self.state = self.transitions[ei][si].clone();
-        }
+        let alt_state = StateResult { state: S::default(), actions: vec![A::default()] };
+        let new_state = self.transitions.get(&(event, self.state.state.clone())).unwrap_or(&alt_state);
+        self.state = new_state.clone()
     }
+    // fn new(states: Vec<S>, events: Vec<E>, transitions: Vec<Vec<StateResult<S, A>>>) -> Self {
+    //     StateMachine { state: StateResult { state: S::default(), actions: Vec::new() }, transitions, states, events }
+    // }
+
+    // fn update_state(&mut self, event: E) {
+    //     println!("UPDATING");
+    //     let ei = self.events.iter().position(|e| e == &event);
+    //     let si = self.states.iter().position(|s| s == &self.state.state);
+    //     println!("EI {:#?} SI {:#?}", ei, si);
+    //     if let (Some(si), Some(ei)) = (si, ei) {
+    //         println!("EI2 {} SI2 {}", ei, si);
+    //         self.state = self.transitions[ei][si].clone();
+    //     }
+    // }
 
     fn current_state(&self) -> &StateResult<S, A> {
         &self.state
